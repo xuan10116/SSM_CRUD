@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="crud.dao.LoginMapper">
+    <resultMap id="loginAccount" type="crud.bean.Admin">
+        <result column="a_username" jdbcType="VARCHAR" property="aUsername"/>
+        <result column="a_password" jdbcType="VARCHAR" property="aPassword"/>
+    </resultMap>
+
+    <select id="login" parameterType="crud.bean.Admin"  resultMap="loginAccount">
+        select a_username,a_password from tbl_admin
+        where a_username=#{aUsername,jdbcType=VARCHAR} and a_password=#{aPassword,jdbcType=VARCHAR}
+    </select>
+</mapper>

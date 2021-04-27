@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!-- @version $Id: applicationContext.xml 561608 2007-08-01 00:33:12Z vgritsenko $ -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+
+  <!--Spring的配置文件,主要配置和业务逻辑有关的-->
+
+<!--  1,配置让spring除了控制器不扫描，其余的都扫描
+    这种配置报错-->
+  <context:component-scan base-package="crud" use-default-filters="false">
+    <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+  </context:component-scan>
+    <!--配置让spring除了控制器不扫，其他的都扫描-->
+   <context:component-scan base-package="crud" use-default-filters="false">
+    <context:include-filter type="annotation" expression="org.springframework.stereotype.Service"/>
+    <context:include-filter type="annotation" expression="org.springframework.stereotype.Component"/>
+    <context:include-filter type="annotation" expression="org.springframework.stereotype.Repository"/>
+    <context:include-filter type="annotation" expression="org.springframework.stereotype.Service"/>
+   </context:component-scan>
+
+  <!--2,配置数据源-->
+  <context:property-placeholder location="classpath:dbconfig.properties"/>
+  <bean id="pooledDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+    <property name="jdbcUrl" value="${jdbc.url}"/>
+    <property name="driverClass" value="${jdbc.driver}"/>
+    <property name="user" value="${jdbc.username}"/>
+    <property name="password" value="${jdbc.passwrod}"/>
+  </bean>
+
+  <!--3,配置和MyBatis的整合-->
+  <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+    <!--指定mybatis全局配置文件的位置-->
+    <property name="configLocation" value="classpath:mybatis-config.xml"/>
+    <property name="dataSource" ref="pooledDataSource"/>
+    <!--指定mybatis的mapper.xml文件的位置-->
+    <property name="mapperLocations" value="classpath:mapper/*.xml"/>
+  </bean>
+
+  <!--4,配置扫描器，将mybatis接口的实现加入到ioc容器中-->
+  <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+    <!--扫描所有的dao接口的实现，加入到ioc容器中-->
+    <property name="basePackage" value="crud.dao"/>
+  </bean>
+
+  <!--5,配置一个可以批量执行操作的sqlSession-->
+  <bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+    <constructor-arg name="sqlSessionFactory" ref="sqlSessionFactoryBean"/>
+    <constructor-arg name="executorType" value="BATCH"/>
+  </bean>
+
+  <!--6,配置事务控制-->
+  <bean id="dataSourceTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    <!--控制事务源-->
+    <property name="dataSource" ref="pooledDataSource"/>
+  </bean>
+  <!--6.2,配置事务增强，事务如何切入-->
+  <tx:advice id="txAdvice" transaction-manager="dataSourceTransactionManager">
+    <tx:attributes>
+      <!--所有方法都是事务方法-->
+      <tx:method name="*"/>
+      <!--我们约定所有以get开始命名的方法都是查询方法，只读的，我们可以进行显示的设置，底层会进行调优-->
+      <tx:method name="get*" read-only="true"/>
+    </tx:attributes>
+  </tx:advice>
+  <!--6.3,开启基于注解的事务-->
+  <aop:config>
+    <!--配置切入点表达式-->
+    <aop:pointcut id="txPoint" expression="execution(* crud.service..*(..))"/>
+    <!--配置事务管理器-->
+    <aop:advisor advice-ref="txAdvice" pointcut-ref="txPoint"/>
+  </aop:config>
+
+  <!-- Activate Cocoon Spring Configurator -->
+  <!-- Configure Log4j -->
+
+  <!-- Activate Avalon Bridge -->
+</beans>
